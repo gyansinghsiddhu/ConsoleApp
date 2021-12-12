@@ -270,7 +270,6 @@ namespace ConsoleApp.DAL
                     }
                     sModel.StartDate = getCurrentTime(sModel.Country); // sModel.FS_StartTime;
                     for (int slot = 0; slot <= (slotdiff + 1); slot++)
-                   // for (int slot = 1; slot <1; slot++)
                     {
 
                         try
@@ -285,12 +284,11 @@ namespace ConsoleApp.DAL
                             if (slot == 0) DlySlot = 0;
                             else if (slot == 1 || slot == 2 || slot == (slotdiff + 1))
                             {
-                                DlySlot = 20 * 60000;  //25
+                                DlySlot = 25 * 60000;  //25
                             }
                             else
                             {
-                                DlySlot = 20 * 60000; //50
-
+                                DlySlot = 50 * 60000; //50
                             }
                             
                             Delay(DlySlot);
@@ -467,13 +465,11 @@ namespace ConsoleApp.DAL
                                                                 int nso = variation.extinfo.tier_index[0];
                                                                 sModel.VariationImageURL = sModel.HostImg + Jdata.data.tier_variations[0].images[nso];
                                                                 //Console.WriteLine("If Record Exit In PreScrp Table then Data Will Not Save into Database.");
-                                                                if(slot==0)
-                                                                {
+                                                                
                                                                     if (IsRecordExistPreScrap(sModel.ModelID, sModel.Country, sModel.ShopID, sModel.ItemID, sModel.ScrapName) == false)
                                                                         SavePreScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash, sModel.PriceFS, sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, getCurrentTime(sModel.Country).ToString(), sModel.PriceRange, sModel.Category1, sModel.Category2, sModel.Category3, sModel.SellerType, sModel.ShopName, sModel.Star, sModel.Rating, sModel.TotalSold, sModel.MonthlySold, sModel.VariationName, sModel.VariationPrice, sModel.VariationImageURL, sModel.UNIT_SOLD, Convert.ToInt32(sModel.MonthlySold), Convert.ToInt32(sModel.TotalSold), sModel.VariationPrice, sModel.VariationBal, sModel.PriceMin, sModel.PriceMax, sModel.UnixCTime.ToString(), sModel.ModelID, sModel.CatId);
-
-                                                                }
-                                                                if (IsRecordExistFSMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot) == false)
+                                                                
+                                                                   if (IsRecordExistFSMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot) == false)
                                                                     SaveVariationStockMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot, sModel.AllocatedStock, sModel.AvailableStock, getCurrentTime(sModel.Country).ToString());
                                                            
                                                             }
@@ -488,12 +484,10 @@ namespace ConsoleApp.DAL
                                                                 sModel.AvailableStock = Jdata.data.stock;
                                                                 sModel.AllocatedStock = variation.price_stocks[0].allocated_stock;
 
-                                                                if (slot == 0)
-                                                                {
+                                                              
                                                                     if (IsRecordExistPreScrap(sModel.ModelID, sModel.Country, sModel.ShopID, sModel.ItemID, sModel.ScrapName) == false)
                                                                         SavePreScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash, sModel.PriceFS, sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, getCurrentTime(sModel.Country).ToString(), sModel.PriceRange, sModel.Category1, sModel.Category2, sModel.Category3, sModel.SellerType, sModel.ShopName, sModel.Star, sModel.Rating, sModel.TotalSold, sModel.MonthlySold, sModel.VariationName, sModel.VariationPrice, sModel.VariationImageURL, sModel.UNIT_SOLD, Convert.ToInt32(sModel.MonthlySold), Convert.ToInt32(sModel.TotalSold), sModel.VariationPrice, sModel.VariationBal, sModel.PriceMin, sModel.PriceMax, sModel.UnixCTime.ToString(), sModel.ModelID, sModel.CatId);
-
-                                                                }
+                                                                
                                                                 if (IsRecordExistFSMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot) == false)
                                                                     SaveVariationStockMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot, sModel.AllocatedStock, sModel.AvailableStock, getCurrentTime(sModel.Country).ToString());
                                                            
