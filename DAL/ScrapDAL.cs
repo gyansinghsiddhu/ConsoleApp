@@ -139,8 +139,8 @@ namespace ConsoleApp.DAL
             objDR_Feedback["ProdID"] = sModel.ItemID; 
             objDR_Feedback["Model_ID"] = sModel.ModelID;
             objDR_Feedback["Model_Name"] = sModel.Model_Name;
-            objDR_Feedback["UNIT_SOLD"] = sModel.UNIT_SOLD; // total;
-            objDR_Feedback["MonthlySoldRef"] = sModel.MonthlySold;;
+            objDR_Feedback["UNIT_SOLD"] = sModel.UNIT_SOLD; // total; // Change to FeedbackCount
+            objDR_Feedback["MonthlySoldRef"] = sModel.MonthlySold; // Change to FeedbackLimit
             double ab = Math.Round((Convert.ToDouble(sModel.UNIT_SOLD * 100) / Convert.ToDouble(sModel.MonthlySold)), 2);
             sModel.Feedback_Ratio = Convert.ToDecimal(ab);
             objDR_Feedback["Feedback_Ratio"] = sModel.Feedback_Ratio;
@@ -219,7 +219,7 @@ namespace ConsoleApp.DAL
 
                     Console.WriteLine("FS Scrapping Receved JSON Data(All Session)"+ urljsn);
                     Console.WriteLine(s_ResponseString);
-                    Console.WriteLine("End of JSON Data.");
+                    Console.WriteLine("End of JSON Data. Time Now is: "+DateTime.Now.ToString());
 
                     dynamic Sessiondata = Newtonsoft.Json.Linq.JObject.Parse(s_ResponseString);
                     sModel.PromotionId = Sessiondata.data.sessions[0].promotionid;
@@ -245,10 +245,10 @@ namespace ConsoleApp.DAL
                     TimeSpan difference = offset2.Subtract(offset1);
                     int slotdiff =   difference.Hours;
                     //string[] subs = sModel.PromotionName.Split('|');
-                    sModel.ScrapName = sModel.FS_StartTime.ToString("yy") + sModel.FS_StartTime.Month.ToString("00") + sModel.FS_StartTime.Day.ToString("00") + "_" + sModel.FS_StartTime.Hour.ToString("00") + "." + sModel.FS_StartTime.Minute.ToString("00"); 
+                    sModel.ScrapName = sModel.FS_StartTime.ToString("yy") + sModel.FS_StartTime.Month.ToString("00") + sModel.FS_StartTime.Day.ToString("00") + "_" + sModel.FS_StartTime.Hour.ToString("00") + "." + sModel.FS_StartTime.Minute.ToString("00");
 
-                    //  INSERT PROMOTION ( CURRENT FLASH SESSION DETAILS INTO DATABASE )
-                    SavePromotionInfo(sModel.PromotionId, sModel.PromotionName, sModel.ProStartTime, sModel.ProEndTime, sModel.Country);
+                    if (IsRecordExistProInfo(sModel.PromotionId, sModel.Country) == false)
+                        SavePromotionInfo(sModel.PromotionId, sModel.PromotionName, sModel.ProStartTime, sModel.ProEndTime, sModel.Country);
                    
                     foreach (var catDetails in Sessiondata.data.sessions[0].categories)
                     {
@@ -259,10 +259,8 @@ namespace ConsoleApp.DAL
                             sModel.CatImage = catDetails.image;
                             if (objDT_Cat == null) NewCart_Cat();
                             else AddProduct_Cat();
-
-                            // =================== IF IS RECORD EXIT 
-                            //  INSERT CATEGORY DATA INTO DATABASE  ONE BY ONE 
-                            SaveCatInfo(sModel.PromotionId, sModel.Country, sModel.CatId, sModel.CatName, sModel.CatName, sModel.CatImage);
+                            if (IsRecordExistCatInfo(sModel.PromotionId, sModel.Country, sModel.CatId) == false)
+                                SaveCatInfo(sModel.PromotionId, sModel.Country, sModel.CatId, sModel.CatName, sModel.CatName, sModel.CatImage);
 
                         }
                         catch
@@ -270,11 +268,8 @@ namespace ConsoleApp.DAL
 
                         }
                     }
-                    //Console.Clear();
-                    // Console.Write("Promotion ID : "+ sModel.PromotionId);
-
                     sModel.StartDate = getCurrentTime(sModel.Country); // sModel.FS_StartTime;
-                    for (int slot = 1; slot <= (slotdiff + 1); slot++)
+                    for (int slot = 0; slot <= (slotdiff + 1); slot++)
                    // for (int slot = 1; slot <1; slot++)
                     {
 
@@ -285,18 +280,17 @@ namespace ConsoleApp.DAL
                             objDT_FSDetails = null;
 
                             sModel.PromotionId_LS = GetPromotionID(sModel.HostName);
-
                             if (sModel.PromotionId != sModel.PromotionId_LS) break;
 
-
-                            if (slot == 1 || slot == 2 || slot == (slotdiff + 1))
+                            if (slot == 0) DlySlot = 0;
+                            else if (slot == 1 || slot == 2 || slot == (slotdiff + 1))
                             {
-                                DlySlot = 25 * 60000;  //25
+                                DlySlot = 20 * 60000;  //25
                             }
                             else
                             {
-                                DlySlot = 50 * 60000; //50
-                                
+                                DlySlot = 20 * 60000; //50
+
                             }
                             
                             Delay(DlySlot);
@@ -314,6 +308,11 @@ namespace ConsoleApp.DAL
                                 response = request.GetResponse();
                                 reader = new StreamReader(response.GetResponseStream());
                                 s_ResponseString = reader.ReadToEnd();
+
+                                Console.WriteLine("GET ALL ITEM ID'S JSON API " + urljsn);
+                                Console.WriteLine(s_ResponseString);
+                                Console.WriteLine("End of JSON Data. Time Now is: " + DateTime.Now.ToString());
+
                                 dynamic itemdata = Newtonsoft.Json.Linq.JObject.Parse(s_ResponseString);
 
                                 int CountItm = 0;
@@ -371,8 +370,8 @@ namespace ConsoleApp.DAL
                                                 sModel.PromotionId = FSDATA.promotionid;
                                                 sModel.ProductName = FSDATA.name;
                                                 sModel.ProductURL = sModel.HostName + "--i." + sModel.ShopID + "." + sModel.ItemID;
-                                                sModel.PriceSlash = FSDATA.price_before_discount / 100000;
-                                                sModel.PriceFS = FSDATA.price / 100000;
+                                                sModel.PriceSlash = FSDATA.price_before_discount / 100000.0;
+                                                sModel.PriceFS = FSDATA.price / 100000.0;
                                                 sModel.FSLatestSold = (Convert.ToInt32(FSDATA.flash_sale_stock) - Convert.ToInt32(FSDATA.stock));
                                                 sModel.FSSoldOutStatus = false;
                                                 if (Convert.ToInt32(FSDATA.stock) > 0)
@@ -388,125 +387,139 @@ namespace ConsoleApp.DAL
                                                 /////////////////// PRE SCRAPPING /////////////////
                                                 ///
 
-                                                if (slot == 1)
+                                            string  ProdDataStrng = GetPreScrapRecord(sModel.HostName,sModel.ShopID, sModel.ItemID);
+                                            if (ProdDataStrng.Length < 200) continue;
+
+                                                try
                                                 {
-                                                    if (IsRecordExistPreScrap(sModel.ScrapName, sModel.Country, sModel.ShopID, sModel.ItemID) == false)
-                                                    {
+                                                    dynamic Jdata = Newtonsoft.Json.Linq.JObject.Parse(ProdDataStrng);
 
-                                                    string  ProdDataStrng = GetPreScrapRecord(sModel.HostName,sModel.ShopID, sModel.ItemID);
-                                                    if (ProdDataStrng.Length < 200) continue;
-
+                                                        // Category Details 
+                                                    int catcnt = 0;
                                                     try
                                                     {
-                                                        dynamic Jdata = Newtonsoft.Json.Linq.JObject.Parse(ProdDataStrng);
-
-                                                            // Category Details 
-                                                        int catcnt = 0;
-                                                        try
+                                                        foreach (var cat in Jdata.data.fe_categories)
                                                         {
-                                                            foreach (var cat in Jdata.data.fe_categories)
-                                                            {
-                                                                catcnt++;
-                                                                try { if (catcnt == 1) sModel.Category1 = cat.display_name; }
-                                                                catch { sModel.Category1 = "N/A"; }
-                                                                try { if (catcnt == 2) sModel.Category2 = cat.display_name; }
-                                                                catch { sModel.Category2 = "N/A"; }
-                                                                try { if (catcnt == 3) sModel.Category3 = cat.display_name; }
-                                                                catch { sModel.Category3 = "N/A"; }
-                                                            }
+                                                            catcnt++;
+                                                            try { if (catcnt == 1) sModel.Category1 = cat.display_name; }
+                                                            catch { sModel.Category1 = "N/A"; }
+                                                            try { if (catcnt == 2) sModel.Category2 = cat.display_name; }
+                                                            catch { sModel.Category2 = "N/A"; }
+                                                            try { if (catcnt == 3) sModel.Category3 = cat.display_name; }
+                                                            catch { sModel.Category3 = "N/A"; }
                                                         }
-                                                        catch
-                                                        {
-                                                            sModel.Category1 = "N/A";
-                                                            sModel.Category2 = "N/A";
-                                                            sModel.Category3 = "N/A";
-                                                        }
-
-
-                                                        sModel.ShopID = Jdata.data.shopid;
-
-
-                                                        sModel.ShopName = GetShopName(sModel.HostName, sModel.ShopID, sModel.Country);
-
-
-                                                        sModel.ItemID = Jdata.data.itemid;
-                                                        sModel.ProductName = Jdata.data.name;
-                                                        sModel.PriceFS = Jdata.data.price / 100000; ;
-                                                        sModel.PriceSlash = Jdata.data.price_min_before_discount / 100000; ;
-                                                        sModel.PriceMin = Jdata.data.price_min / 100000; 
-                                                        sModel.PriceMax = Jdata.data.price_max / 100000;
-                                                        if (sModel.PriceMin != sModel.PriceMax) sModel.PriceRange = (sModel.PriceMin.ToString() + "-" + sModel.PriceMax.ToString()).ToString();
-                                                        else sModel.PriceRange = sModel.PriceFS.ToString();
-
-
-                                                         sModel.Star = Jdata.data.item_rating.rating_star;
-                                                         sModel.Star = Math.Round(Convert.ToDecimal(sModel.Star),2);
-
-                                                           
-                                                       
-
-                                                        sModel.Rating = Jdata.data.item_rating.rating_count[0];
-                                                        sModel.TotalSold = Jdata.data.historical_sold;
-                                                        sModel.MonthlySold = Jdata.data.sold;
-                                                        sModel.SellerType = Jdata.data.shipping_icon_type;
-                                                        if (sModel.SellerType == "0") sModel.SellerType = "Local"; else sModel.SellerType = "Cross Border";
-                                                        sModel.UnixCTime = Jdata.data.ctime;
-
-                                                            // VARIATION DETAILS ...........................
-
-                                                        int index2 = 0;
-                                                      
-                                                        try { foreach (var trVar in Jdata.data.models) index2++; }
-                                                        catch { index2 = 0; }
-                                                            
-                                                        foreach (var variations in Jdata.data.models)
-                                                        {
-                                                                if (index2 > 1)
-                                                                {
-
-                                                                    sModel.VariationName = variations.name;
-                                                                    sModel.VariationPrice = variations.price / 100000;
-                                                                    sModel.VariationBal = variations.normal_stock;
-                                                                    sModel.ModelID = variations.modelid;
-                                                                    int nso = variations.extinfo.tier_index[0];
-                                                                    sModel.VariationImageURL = sModel.HostImg + Jdata.data.tier_variations[0].images[nso];
-                                                                    SavePreScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash, sModel.PriceFS, sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, getCurrentTime(sModel.Country).ToString(),sModel.PriceRange, sModel.Category1, sModel.Category2, sModel.Category3, sModel.SellerType, sModel.ShopName, sModel.Star, sModel.Rating, sModel.TotalSold, sModel.MonthlySold, sModel.VariationName, sModel.VariationPrice, sModel.VariationImageURL, sModel.UNIT_SOLD, Convert.ToInt32(sModel.MonthlySold), Convert.ToInt32(sModel.TotalSold),sModel.VariationPrice, sModel.VariationBal, sModel.PriceMin, sModel.PriceMax, sModel.UnixCTime.ToString(), sModel.ModelID);
-
-                                                                }
-                                                                else
-                                                                {
-
-                                                                    sModel.VariationName = "";
-                                                                    sModel.VariationImageURL = sModel.HostImg + "" + Jdata.data.image;
-                                                                    sModel.VariationPrice = Jdata.data.price / 100000;
-                                                                    sModel.VariationBal = Jdata.data.normal_stock;
-                                                                    sModel.ModelID = variations.modelid;
-                                                                   SavePreScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash, sModel.PriceFS, sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, getCurrentTime(sModel.Country).ToString(), sModel.PriceRange, sModel.Category1, sModel.Category2, sModel.Category3, sModel.SellerType, sModel.ShopName, sModel.Star, sModel.Rating, sModel.TotalSold, sModel.MonthlySold, sModel.VariationName, sModel.VariationPrice, sModel.VariationImageURL, sModel.UNIT_SOLD, Convert.ToInt32(sModel.MonthlySold), Convert.ToInt32(sModel.TotalSold), sModel.VariationPrice, sModel.VariationBal, sModel.PriceMin, sModel.PriceMax, sModel.UnixCTime.ToString(), sModel.ModelID);
-
-                                                                }
-                                                              
-
-                                                            }
-
-                                                        }
-                                                        catch (Exception ex) { }
-
-
                                                     }
-                                                }
+                                                    catch
+                                                    {
+                                                        sModel.Category1 = "N/A";
+                                                        sModel.Category2 = "N/A";
+                                                        sModel.Category3 = "N/A";
+                                                    }
 
+                                                    sModel.ShopID = Jdata.data.shopid;
+                                                    sModel.CatId = Jdata.data.catid;
+                                                    sModel.ShopName = GetShopName(sModel.HostName, sModel.ShopID, sModel.Country);
+                                                    sModel.ItemID = Jdata.data.itemid;
+                                                    sModel.ProductName = Jdata.data.name;
+                                                    sModel.PriceFS = Jdata.data.price / 100000.0; ;
+                                                     
+                                                    
+                                                    ////////////////PRICE RANGE CALCULATION
+
+                                                    sModel.PriceMin = Jdata.data.price_min / 100000.0; 
+                                                    sModel.PriceMax = Jdata.data.price_max / 100000.0;
+                                                    if (sModel.PriceMin != sModel.PriceMax)
+                                                        sModel.PriceRange = ((sModel.PriceMin + sModel.PriceMax) / 2).ToString("0.00");
+                                                    //sModel.PriceRange = (sModel.PriceMin.ToString() + "-" + sModel.PriceMax.ToString()).ToString();
+                                                    else sModel.PriceRange = sModel.PriceFS.ToString();
+                                                     
+                                                    ////////////////////////////////////////////////////
+
+
+                                                    sModel.Star = Jdata.data.item_rating.rating_star;
+                                                    sModel.Star = Math.Round(Convert.ToDecimal(sModel.Star),2);
+                                                    sModel.Rating = Jdata.data.item_rating.rating_count[0];
+                                                    sModel.TotalSold = Jdata.data.historical_sold;
+                                                    sModel.MonthlySold = Jdata.data.sold;
+                                                    sModel.SellerType = Jdata.data.shipping_icon_type;
+                                                    if (sModel.SellerType == "0") sModel.SellerType = "Local"; else sModel.SellerType = "Cross Border";
+                                                    sModel.UnixCTime = Jdata.data.ctime;
+
+                                                    // VARIATION DETAILS ...........................
+
+                                                    int index2 = 0;
+                                                    try { foreach (var trVar in Jdata.data.models) index2++; }
+                                                    catch { index2 = 0; }
+                                                            
+                                                    foreach (var variation in Jdata.data.models)
+                                                    {
+                                                            if (index2 > 1)
+                                                            {
+
+                                                                sModel.VariationName = variation.name;
+                                                                sModel.VariationPrice = variation.price / 100000.0;
+                                                                sModel.VariationBal = variation.normal_stock;
+                                                                sModel.ModelID = variation.modelid;
+                                                                sModel.PriceSlash = variation.price_before_discount / 100000.0;
+                                                                sModel.AvailableStock =  variation.stock;
+                                                                sModel.AllocatedStock = variation.price_stocks[0].allocated_stock;
+
+                                                                int nso = variation.extinfo.tier_index[0];
+                                                                sModel.VariationImageURL = sModel.HostImg + Jdata.data.tier_variations[0].images[nso];
+                                                                //Console.WriteLine("If Record Exit In PreScrp Table then Data Will Not Save into Database.");
+                                                                if(slot==0)
+                                                                {
+                                                                    if (IsRecordExistPreScrap(sModel.ModelID, sModel.Country, sModel.ShopID, sModel.ItemID, sModel.ScrapName) == false)
+                                                                        SavePreScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash, sModel.PriceFS, sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, getCurrentTime(sModel.Country).ToString(), sModel.PriceRange, sModel.Category1, sModel.Category2, sModel.Category3, sModel.SellerType, sModel.ShopName, sModel.Star, sModel.Rating, sModel.TotalSold, sModel.MonthlySold, sModel.VariationName, sModel.VariationPrice, sModel.VariationImageURL, sModel.UNIT_SOLD, Convert.ToInt32(sModel.MonthlySold), Convert.ToInt32(sModel.TotalSold), sModel.VariationPrice, sModel.VariationBal, sModel.PriceMin, sModel.PriceMax, sModel.UnixCTime.ToString(), sModel.ModelID, sModel.CatId);
+
+                                                                }
+                                                                if (IsRecordExistFSMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot) == false)
+                                                                    SaveVariationStockMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot, sModel.AllocatedStock, sModel.AvailableStock, getCurrentTime(sModel.Country).ToString());
+                                                           
+                                                            }
+                                                            else
+                                                            {
+
+                                                                sModel.VariationName = "";
+                                                                sModel.VariationImageURL = sModel.HostImg + "" + Jdata.data.image;
+                                                                sModel.VariationPrice = Jdata.data.price / 100000.0;
+                                                                sModel.VariationBal = Jdata.data.normal_stock;
+                                                                sModel.ModelID = variation.modelid;
+                                                                sModel.AvailableStock = Jdata.data.stock;
+                                                                sModel.AllocatedStock = variation.price_stocks[0].allocated_stock;
+
+                                                                if (slot == 0)
+                                                                {
+                                                                    if (IsRecordExistPreScrap(sModel.ModelID, sModel.Country, sModel.ShopID, sModel.ItemID, sModel.ScrapName) == false)
+                                                                        SavePreScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash, sModel.PriceFS, sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, getCurrentTime(sModel.Country).ToString(), sModel.PriceRange, sModel.Category1, sModel.Category2, sModel.Category3, sModel.SellerType, sModel.ShopName, sModel.Star, sModel.Rating, sModel.TotalSold, sModel.MonthlySold, sModel.VariationName, sModel.VariationPrice, sModel.VariationImageURL, sModel.UNIT_SOLD, Convert.ToInt32(sModel.MonthlySold), Convert.ToInt32(sModel.TotalSold), sModel.VariationPrice, sModel.VariationBal, sModel.PriceMin, sModel.PriceMax, sModel.UnixCTime.ToString(), sModel.ModelID, sModel.CatId);
+
+                                                                }
+                                                                if (IsRecordExistFSMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot) == false)
+                                                                    SaveVariationStockMovement(sModel.ScrapName, sModel.Country, sModel.ItemID, sModel.ShopID, sModel.ModelID, sModel.Slot, sModel.AllocatedStock, sModel.AvailableStock, getCurrentTime(sModel.Country).ToString());
+                                                           
+                                                            }
+
+                                                        }
+
+                                                        sModel.PriceSlash = Jdata.data.price_min_before_discount / 100000.0;
+
+                                                        if (slot != 0)
+                                                        {
+                                                            if (IsRecordExist(sModel.ScrapName, sModel.Country, sModel.ShopID, sModel.ItemID) == true)
+                                                            {
+                                                                if (IsRecordExistNull(sModel.ScrapName, sModel.Country, sModel.ShopID, sModel.ItemID, slot) == true)
+                                                                    UpdatePostScrap(sModel.Slot, sModel.Country, sModel.StartDate.ToString(), sModel.FSLatestSold.ToString(), sModel.ScrapName, sModel.ShopID, sModel.ItemID);
+                                                            }
+                                                            else SavePostScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash.ToString(), sModel.PriceFS.ToString(), sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, sModel.Slot, sModel.StartDate.ToString());
+                                                        }
+
+                                                        sModel.FSLatestSold = 0;
+
+                                                }
+                                                catch (Exception ex) { }
 
                                                 ////////////////////END PRE SCRAPPING ///////////////////////////
-
-                                                if (IsRecordExist(sModel.ScrapName, sModel.Country, sModel.ShopID, sModel.ItemID) == true)
-                                                {
-                                                    if (IsRecordExistNull(sModel.ScrapName, sModel.Country, sModel.ShopID, sModel.ItemID,slot) == true)
-                                                        UpdatePostScrap(sModel.Slot, sModel.Country, sModel.StartDate.ToString(), sModel.FSLatestSold.ToString(), sModel.ScrapName, sModel.ShopID, sModel.ItemID);
-
-                                                }
-                                                else SavePostScrap(sModel.SrNO.ToString(), sModel.ScrapName, sModel.ProductURL, sModel.CatName, sModel.ProductName, sModel.PriceSlash.ToString(), sModel.PriceFS.ToString(), sModel.FSLatestSold.ToString(), sModel.ShopID, sModel.ItemID, sModel.Country, sModel.PriceSlash, sModel.PriceFS, sModel.Slot, sModel.StartDate.ToString());
-
-                                                sModel.FSLatestSold = 0;
+                                                ///
                                             }
                                             catch (WebException ex)
                                             {
@@ -522,8 +535,7 @@ namespace ConsoleApp.DAL
                                 {
                                     string ab = ex.ToString();
                                 }
-                                // Console.WriteLine(sModel.PromotionId + " Has items:"+CountItm);
-                               // Console.WriteLine(sModel.PromotionId + " Has items:" + objDT_FSDetails.Rows.Count);
+                           
                             }
                             catch (WebException ex)
                             {
@@ -559,7 +571,8 @@ namespace ConsoleApp.DAL
             string s_ResponseString = "";
             try
             {
-                WebRequest _request = WebRequest.Create(sModel.HostName + "api/v2/flash_sale/flash_sale_batch_get_items");
+                string urljsn = sModel.HostName + "api/v2/flash_sale/flash_sale_batch_get_items";
+                WebRequest _request = WebRequest.Create(urljsn);
                 _request.Method = "POST";
                 _request.ContentType = "application/json;charset=UTF-8";
                 using (var streamWriter = new StreamWriter(_request.GetRequestStream()))
@@ -567,11 +580,15 @@ namespace ConsoleApp.DAL
                     string limit = "12";
                     string json = "{\"promotionid\":" + promotionid + ",  \"itemids\":" + itemids + ",     \"limit\":" + limit + "}";
                     streamWriter.Write(json);
+
                 }
                 var httpResponse = (HttpWebResponse)_request.GetResponse();
                 using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
                 {
                     s_ResponseString = streamReader.ReadToEnd();
+                    Console.WriteLine("GET POST DETAILS OF FS DATA " + urljsn);
+                    Console.WriteLine(s_ResponseString);
+                    Console.WriteLine("End of SHOP DETAIL API. Time Now is: " + DateTime.Now.ToString()+ " " + urljsn);
                     return s_ResponseString;
 
                 }
@@ -588,23 +605,23 @@ namespace ConsoleApp.DAL
 
         ///  FEEDBACK SCRAPPING FUNCTION 
 
-        public void FeedbackScrapping( )
+        public void FeedbackScrapping(string cntry, string prdid )
         {
         for (; ; )
         {
                 try
                 {
+
+                    cnn.ConnectionString = CnnStr;
                     //Console.Clear();
                     string country; string shopid; string prodid; string HostName=""; string Qry;
-
-                    
-                    
                     DataTable dt = new DataTable();
-                    cnn.ConnectionString = CnnStr;
-                    if (cnn.State == ConnectionState.Closed) cnn.Open();
-                    // Qry = "Select ImportToCountry,ShopID,ProductID from PurchasingInfo Where UserID !=9 and ProductID  ='11365775445' or  ProductID ='4644606086' or   ProductID ='12711672942'   except select Country , ShopID , prodid from FeedbackInfo";
 
+                    //Check Product ID Not Found In Database 
                     Qry = "Select ImportToCountry,ShopID,ProductID from PurchasingInfo Where UserID !=9  except select Country , ShopID , prodid from FeedbackInfo";
+                    
+                    if (cntry != "" && prdid != "") DeleteFeedbackData(cntry, prdid);
+                    if (cnn.State == ConnectionState.Closed) cnn.Open();
                     SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
                     Sqldbda.Fill(dt);
                     if (dt.Rows.Count > 0)
@@ -615,6 +632,10 @@ namespace ConsoleApp.DAL
                             country = dt.Rows[i][0].ToString();
                             shopid = dt.Rows[i][1].ToString();
                             prodid = dt.Rows[i][2].ToString();
+
+                            //Check Product ID Have Price Range or Not 
+                            if (IsRecordExist_PriceRange(country, shopid, prodid) == false) continue;
+
                             UniqeTable_Feedback = null;
                             objDT_ModelID = null;
 
@@ -654,6 +675,11 @@ namespace ConsoleApp.DAL
 
                                         urljsn = sModel.HostName + "api/v2/item/get_ratings?itemid=" +
                                             sModel.ItemID + "&shopid=" + sModel.ShopID + "&limit=" + limit + "&offset=" + ofset + "";
+                                        
+                                        Console.WriteLine("GET RATING DETAILS OF ITEM " + urljsn);
+                                        Console.WriteLine(s_ResponseString);
+                                        Console.WriteLine("End of RATING DETAILS API for Limit "+limit+" Time Now is: " + DateTime.Now.ToString() + " " + urljsn);
+                                        
                                         var request = WebRequest.Create(urljsn);
                                         try
                                         {
@@ -742,7 +768,7 @@ namespace ConsoleApp.DAL
                                             if (LiveModelId == sModel.ModelID)
                                             {
                                                 sModel.Model_Name = trVar.name;
-                                                sModel.Model_Price = trVar.price / 10000;
+                                                sModel.Model_Price = trVar.price / 100000.0;
                                                 break;
                                             }
                                         }
@@ -796,18 +822,63 @@ namespace ConsoleApp.DAL
 
                     }
                     else cnn.Close();
-
-
-
                 }
                 catch
                 {
                     cnn.Close();
                 }
+                if(cntry != "" && prdid !="")
+                {
+                    Console.WriteLine("Mannual Feedback Scrapping Has been Completed");
+                    break;
+                }
+                //ChckFeedback();
+
+
         }
         }
 
 
+
+        private void ChckFeedback()
+        {
+            try
+            {
+                string country; string shopid; string prodid; string Qry;
+                DataTable dt = new DataTable();
+                DataTable dt2 = new DataTable();
+                Qry = "select ImportToCountry as Country, ShopID, ProductID , Count(*) as VarCount from PurchasingInfo P inner join PurchasingInfoVariation PV on P.PurchaseKey = PV.PurchaseKey where P.UserID != 9 group by ImportToCountry, ShopID, ProductID except select Country as Country, ShopID , prodid , Count(*) as VarCount  from FeedbackInfo group by Country , ShopID , prodid";
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
+                Sqldbda.Fill(dt);
+                if (dt.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        country = dt.Rows[i][0].ToString();
+                        shopid = dt.Rows[i][1].ToString();
+                        prodid = dt.Rows[i][2].ToString();
+                        Qry = "select * from (select  Count(*) as VarCount from PurchasingInfo P inner join PurchasingInfoVariation PV on P.PurchaseKey = PV.PurchaseKey and P.ProductID ='" + prodid + "' and Country = '" + country + "' and ShopID='" + shopid + "') as Qry1 where VarCount > (select Count(*) as VarCount from FeedbackInfo Where ProdID ='" + prodid + "' and Country = '" + country + "' and ShopID='" + shopid + "')";
+                        Sqldbda = new SqlDataAdapter(Qry, cnn);
+                        Sqldbda.Fill(dt2);
+                        if (dt2.Rows.Count > 0)
+                        {
+                            DeleteFeedbackData(country, prodid);
+                        }
+                        dt2.Clear();
+                    }
+
+                }
+                else
+                {
+                    cnn.Close();
+                }
+            }
+            catch(Exception ex)
+            {
+
+            }
+        }
 
 
 
@@ -933,6 +1004,10 @@ namespace ConsoleApp.DAL
                     var response = request.GetResponse();
                     var reader = new StreamReader(response.GetResponseStream());
                     s_ResponseString = reader.ReadToEnd();
+
+                    Console.WriteLine("GET ITEM DETAILS of PartiCular ITEM API  " + urljsn);
+                    Console.WriteLine(s_ResponseString);
+                    Console.WriteLine("End of JSON Data. Time Now is: " + DateTime.Now.ToString());
                 }
                 catch (WebException ex)
                 {
@@ -972,7 +1047,12 @@ namespace ConsoleApp.DAL
                     reader = new StreamReader(response.GetResponseStream());
                     topSaleJsonData = reader.ReadToEnd();
                     dynamic TopSaleJData = Newtonsoft.Json.Linq.JObject.Parse(topSaleJsonData);
-                    
+
+
+                    Console.WriteLine("GET SHOP DETAILS API  " + urljsn);
+                    Console.WriteLine(s_ResponseString);
+                    Console.WriteLine("End of SHOP DETAIL API. Time Now is: " + DateTime.Now.ToString()+ " " + urljsn);
+
 
                     if (IsRecordExist_ShopDATA(Country, SPID) == false) 
                         SaveShopData(Country, SPID, shopJsonData, s_ResponseString, topSaleJsonData);
@@ -998,6 +1078,50 @@ namespace ConsoleApp.DAL
 
         //====================================== SQL Execute FUNCTION =================================
 
+        public void DeleteFeedbackData(string cntry, string PRID)
+        {
+            try
+            {
+
+               // cnn.ConnectionString = CnnStr;
+
+                try
+                {
+                    if (cnn.State == ConnectionState.Closed) cnn.Open();
+                    tran = cnn.BeginTransaction();
+                    string Qry = "Delete From  FeedbackInfo Where Country = '"+ cntry + "' and  ProdID = '"+ PRID + "'";
+                    SqlCommand Comm2 = new SqlCommand(Qry, cnn);
+                    Comm2.Transaction = tran;
+                    Comm2.CommandTimeout = 0;
+                    Comm2.ExecuteNonQuery();
+                    Comm2.Dispose();
+                    tran.Commit();
+                    cnn.Close();
+                    Comm2.Parameters.Clear();
+                }
+                catch (SqlException ex)
+                {
+                    tran.Rollback();
+                    cnn.Close();
+
+                }
+                catch (Exception ex)
+                {
+                    tran.Rollback();
+                    cnn.Close();
+                }
+
+
+
+            }
+            catch
+            {
+
+
+
+            }
+        }
+
         public void SaveFeedbackData(string cntry, string SHID, string PRID, string ModelID, string ModelName, int UntSold, decimal MSoldRef, decimal FRatio, decimal ModelPrice)
         {
 
@@ -1013,15 +1137,15 @@ namespace ConsoleApp.DAL
 
                     //string Qry = "Insert Into Shop_Details values ('" + SHID + "', '" + cntry + "', N'" + APIDATA + "' , N'"+shpName+"' )";
 
-                    string Qry = "Insert into FeedbackInfo(Country ,ShopID , ProdID , ModelID , ModelName , UnitSold , MonthlySoldRef , FeedbackRatio,ModifiedDate, ModelPrice) values (@Country ,@ShopID , @ProdID , @ModelID , @ModelName , @UnitSold , @MonthlySoldRef , @FeedbackRatio, @ModifiedDate, @ModelPrice)";
+                    string Qry = "Insert into FeedbackInfo(Country ,ShopID , ProdID , ModelID , ModelName , FeedbackCount , FeedbackLimit , FeedbackRatio,ModifiedDate, ModelPrice) values (@Country ,@ShopID , @ProdID , @ModelID , @ModelName , @FeedbackCount , @FeedbackLimit , @FeedbackRatio, @ModifiedDate, @ModelPrice)";
                     SqlCommand Comm2 = new SqlCommand(Qry, cnn);
                     Comm2.Parameters.Add("@Country", SqlDbType.NVarChar, 50).Value = cntry;
                     Comm2.Parameters.Add("@ShopID", SqlDbType.NVarChar, 50).Value = SHID;
                     Comm2.Parameters.Add("@ProdID", SqlDbType.NVarChar, 50).Value = PRID;
-                    Comm2.Parameters.Add("@ModelID", SqlDbType.NVarChar, 50).Value = ModelID;
-                    Comm2.Parameters.Add("@ModelName", SqlDbType.NVarChar, 50).Value = ModelName;
-                    Comm2.Parameters.Add("@UnitSold", SqlDbType.Int).Value = UntSold;
-                    Comm2.Parameters.Add("@MonthlySoldRef", SqlDbType.Decimal).Value = MSoldRef;
+                    Comm2.Parameters.Add("@ModelID",SqlDbType.BigInt).Value = Convert.ToInt64(ModelID);
+                    Comm2.Parameters.Add("@ModelName", SqlDbType.NVarChar, 250).Value = ModelName;
+                    Comm2.Parameters.Add("@FeedbackCount", SqlDbType.Int).Value = UntSold;
+                    Comm2.Parameters.Add("@FeedbackLimit", SqlDbType.Decimal).Value = MSoldRef;
                     Comm2.Parameters.Add("@FeedbackRatio", SqlDbType.Decimal).Value = FRatio;
                     Comm2.Parameters.Add("@ModifiedDate", SqlDbType.DateTime).Value = getCurrentTime(cntry);
                     Comm2.Parameters.Add("@ModelPrice", SqlDbType.Decimal).Value = ModelPrice;
@@ -1067,6 +1191,7 @@ namespace ConsoleApp.DAL
                 try
                 {
                     if (cnn.State == ConnectionState.Closed) cnn.Open();
+                    tran = cnn.BeginTransaction();
                     tran = cnn.BeginTransaction();
 
                     string Qry = "Insert into PromotionInfo(PromotionID,PromotionName,Start_Time,End_Time,Country) values (@PromotionID,@PromotionName,@Start_Time,@End_Time ,@Country)";
@@ -1253,6 +1378,58 @@ namespace ConsoleApp.DAL
 
         }
 
+
+        public void SaveVariationStockMovement(string PostScrapName, string Country, string ProdID, string ShopID, string ModelID, int SLOT, int AllocatedStock , int AvailableStock , string STRTTIME)
+        {
+
+            try
+            {
+                cnn.ConnectionString = CnnStr;
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                tran = cnn.BeginTransaction();
+
+                string Qry = "Insert into FSDataVariationStockMovement(ScrapName, Country,ProductID , ShopID, ModelID,Slot,AllocatedStock,AvailableStock,UnitSold,ModifiedDate)" +
+               "values (@ScrapName, @Country,@ProductID , @ShopID, @ModelID,@Slot,@AllocatedStock,@AvailableStock,@UnitSold,@ModifiedDate)";
+                SqlCommand Comm2 = new SqlCommand(Qry, cnn);
+                Comm2.Parameters.Add("@ScrapName", SqlDbType.NVarChar, 255).Value = PostScrapName;
+                Comm2.Parameters.Add("@Country", SqlDbType.NVarChar, 255).Value = Country;
+                Comm2.Parameters.Add("@ProductID", SqlDbType.NVarChar, 255).Value = ProdID;
+                Comm2.Parameters.Add("@ShopID", SqlDbType.NVarChar, 255).Value = ShopID;
+                Comm2.Parameters.Add("@ModelID", SqlDbType.BigInt).Value = Convert.ToInt64(ModelID);
+                Comm2.Parameters.Add("@Slot", SqlDbType.Int).Value = SLOT;
+                Comm2.Parameters.Add("@AllocatedStock", SqlDbType.Int).Value = AllocatedStock;
+                Comm2.Parameters.Add("@AvailableStock", SqlDbType.Int).Value = AvailableStock;
+                int UnitSold = AllocatedStock - AvailableStock;
+                Comm2.Parameters.Add("@UnitSold", SqlDbType.Int).Value =UnitSold;
+                Comm2.Parameters.Add("@ModifiedDate", SqlDbType.DateTime).Value = Convert.ToDateTime(STRTTIME);
+
+
+                Comm2.Transaction = tran;
+                Comm2.CommandTimeout = 0;
+
+                Comm2.ExecuteNonQuery();
+                Comm2.Dispose();
+                tran.Commit();
+                cnn.Close();
+
+                Comm2.Parameters.Clear();
+
+            }
+            catch (SqlException ex)
+            {
+                tran.Rollback();
+                cnn.Close();
+
+            }
+            catch (Exception ex)
+            {
+                cnn.Close();
+
+            }
+        }
+
+
+
         public void SavePostScrap(string Srno, string PostScrapName, string LINK_SKU, string Cat_Name, string PRODUCT_NAME, string PRICE_SLASH, string PRICE_FS, string FS_UNIT_SOLD, string ShopID, string ProdID, string Country, decimal PRICE_SLASH_UPDATED, decimal PRICE_FS_UPDATED, int SLOT , string STRTTIME)
         {
                      
@@ -1302,6 +1479,8 @@ namespace ConsoleApp.DAL
                 }
 
 
+
+
         public void SavePreScrap( string Srno, string PreScrapName, string LINK_SKU, string Cat_Name, 
             string PRODUCT_NAME, Decimal PRICE_SLASH, decimal PRICE_FS, string FS_UNIT_SOLD, string ShopID,
             string ProdID, string Country, decimal PRICE_SLASH_UPDATED, decimal PRICE_FS_UPDATED, 
@@ -1310,7 +1489,7 @@ namespace ConsoleApp.DAL
             string Variation, Decimal Variation_price, string ImgUrl,
             int FS_UNIT_SOLD_UPDATED, int MONTHLY_SOLD_UPDATED, 
             int TOTAL_SOLD_UPDATED, Decimal Variation_price_UPDATED, int Variation_Bal,
-            Decimal M_PRICE, Decimal MX_PRICE,  string CTIME , string VarID)
+            Decimal M_PRICE, Decimal MX_PRICE,  string CTIME , string VarID, string CatID)
         {
             try
             {
@@ -1319,8 +1498,8 @@ namespace ConsoleApp.DAL
 
                // string Qry = "Insert into PreScrapData( SR_NO,	PreScrapName,	Cat_Name,	Cat_link,	PRODUCT_NAME,	PRICE_RANGE,	PRICE_SLASH,	PRICE_FS,	LINK_SKU,	CAT_NAME_1,	CAT_NAME_2,	CAT_NAME_3,	Seller,	SHOP_NAME,	STAR,	RATING,	TOTAL_SOLD,	MONTHLY_SOLD,	Variation,	Variation_price,	ImgUrl, InsertDt,ProdID,ShopID, Country, MONTHLY_SOLD_UPDATED,TOTAL_SOLD_UPDATED,PRICE_FS_UPDATED,PRICE_SLASH_UPDATED,VARIATION_PRICE_UPDATED,VARIATION_BALANCE,Price_Min, Price_Max, Ctime, VariationID,VariationCDate ) values (@SR_NO,	@PreScrapName,	@Cat_Name,	@Cat_link,	@PRODUCT_NAME,	@PRICE_RANGE, @PRICE_SLASH,	@PRICE_FS,	@LINK_SKU,	@CAT_NAME_1,	@CAT_NAME_2,	@CAT_NAME_3, @Seller,	@SHOP_NAME,	@STAR,	@RATING,	@TOTAL_SOLD,	@MONTHLY_SOLD,	@Variation,	@Variation_price, @ImgUrl,  @InsertDt, @ProdID, @ShopID, @Country,  @MONTHLY_SOLD_UPDATED, @TOTAL_SOLD_UPDATED, @PRICE_FS_UPDATED, @PRICE_SLASH_UPDATED, @VARIATION_PRICE_UPDATED, @VARIATION_BALANCE, @Price_Min, @Price_Max, @Ctime, @VariationID,@VariationCDate)";
 
-                string Qry = "Insert into PreScrapData( SrNo,	PreScrapName,	FSCategory,	FSCategoryLink,	ProductName,	PriceRange,	PriceSlash,	ProductLink,	Category,	Category2,	Category3,	Seller,	ShopName,	Star,	Rating,	TotalSold,	MonthlySold,	Variation,	VariationPrice,	ImageLink,	ModifiedDate,	ShopID,	ProductID,	Country, VariationStock,		PriceMin,	PriceMax,	UnixCreationTime,	VariationID,	CreationDate) " +
-                                   "values (  @SrNo,	@PreScrapName,	@FSCategory,	@FSCategoryLink,	@ProductName,	@PriceRange,	@PriceSlash,	@ProductLink,	@Category,	@Category2,	@Category3,	@Seller, @ShopName,	@Star,	@Rating,	@TotalSold,	@MonthlySold,	@Variation,	@VariationPrice,	@ImageLink,	@ModifiedDate,	@ShopID,	@ProductID,	@Country,	@VariationStock,	@PriceMin,	@PriceMax,	@UnixCreationTime,	@VariationID,	@CreationDate )";
+                string Qry = "Insert into PreScrapData( SrNo,	PreScrapName,	FSCategory,	FSCategoryLink,	ProductName,	PriceRange,	PriceSlash,	ProductLink,	Category,	Category2,	Category3,	Seller,	ShopName,	Star,	Rating,	TotalSold,	MonthlySold,	Variation,	VariationPrice,	ImageLink,	ModifiedDate,	ShopID,	ProductID,	Country, VariationStock,		PriceMin,	PriceMax,	UnixCreationTime,	ModelID, CategoryID,	CreationDate) " +
+                                   "values (  @SrNo,	@PreScrapName,	@FSCategory,	@FSCategoryLink,	@ProductName,	@PriceRange,	@PriceSlash,	@ProductLink,	@Category,	@Category2,	@Category3,	@Seller, @ShopName,	@Star,	@Rating,	@TotalSold,	@MonthlySold,	@Variation,	@VariationPrice,	@ImageLink,	@ModifiedDate,	@ShopID,	@ProductID,	@Country,	@VariationStock,	@PriceMin,	@PriceMax,	@UnixCreationTime,	@ModelID, @CategoryID,	@CreationDate )";
 
 
                 SqlCommand Comm2 = new SqlCommand(Qry, cnn);
@@ -1353,7 +1532,9 @@ namespace ConsoleApp.DAL
                 Comm2.Parameters.Add("@PriceMin", SqlDbType.Decimal).Value = M_PRICE;
                 Comm2.Parameters.Add("@PriceMax", SqlDbType.Decimal).Value = MX_PRICE;
                 Comm2.Parameters.Add("@UnixCreationTime", SqlDbType.VarChar, 255).Value = CTIME;
-                Comm2.Parameters.Add("@VariationID", SqlDbType.BigInt).Value = Convert.ToInt64(VarID);
+                Comm2.Parameters.Add("@CategoryID", SqlDbType.BigInt).Value = Convert.ToInt64(CatID);
+                Comm2.Parameters.Add("@ModelID", SqlDbType.BigInt).Value = Convert.ToInt64(VarID);
+               
 
                 DateTimeOffset offset = DateTimeOffset.FromUnixTimeSeconds(Convert.ToInt64(sModel.ProEndTime));
                 if (Country == "Malaysia" || Country == "Philippines" || Country == "Singapore")
@@ -1541,6 +1722,37 @@ namespace ConsoleApp.DAL
             }
         }
 
+        public bool IsRecordExist_PriceRange(string Cntry, string SHID, string PRID)
+        {
+            try
+            {
+                string Qry;
+                DataTable dt = new DataTable();
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                Qry = "select Top(1)*from PreScrapData where ProductID = '" + PRID + "' and Country = '" + Cntry + "' and ShopID = '" + SHID + "' and PriceMin != PriceMax";
+                SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
+                Sqldbda.Fill(dt);
+
+                if (dt.Rows.Count > 0)
+                {
+                    cnn.Close();
+                    return true;
+                }
+
+                else
+                {
+                    cnn.Close();
+                    return false;
+                }
+
+            }
+            catch
+            {
+                cnn.Close();
+                return false;
+            }
+        }
+
         public bool IsRecordExistFeedback(string ModelId, string Cntry, string Shopid, string prodid)
         {
             try
@@ -1569,6 +1781,126 @@ namespace ConsoleApp.DAL
                 return false;
             }
         }
+
+        public bool IsRecordExistProInfo(string promid, string Cntry)
+        {
+            try
+            {
+                string Qry;
+                DataTable dt = new DataTable();
+                cnn.ConnectionString = CnnStr;
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                Qry = "Select * from PromotionInfo where  PromotionID = '" + promid + "' and Country= '" + Cntry + "'";
+                SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
+                Sqldbda.Fill(dt);
+                if (dt.Rows.Count > 0)
+                {
+                    cnn.Close();
+                    return true;
+                }
+                else
+                {
+                    cnn.Close();
+                    return false;
+                }
+            }
+            catch
+            {
+                cnn.Close();
+                return false;
+            }
+        }
+
+
+        public bool IsRecordExistCatInfo(string promid , string Cntry, string catid)
+        {
+            try
+            {
+                string Qry;
+                DataTable dt = new DataTable();
+                cnn.ConnectionString = CnnStr;
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                Qry = "Select * from CategoryInfo where  PromotionID = '"+promid+"' and Country= '" + Cntry + "' and   CatID = '" + catid + "'";
+                SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
+                Sqldbda.Fill(dt);
+                if (dt.Rows.Count > 0)
+                {
+                    cnn.Close();
+                    return true;
+                }
+                else
+                {
+                    cnn.Close();
+                    return false;
+                }
+            }
+            catch
+            {
+                cnn.Close();
+                return false;
+            }
+        }
+
+
+        public bool IsRecordExistFSMovement(string ScrapName,  string Cntry,  string prodid , string Shopid, string ModelId , int slot )
+        {
+            try
+            {
+                string Qry;
+                DataTable dt = new DataTable();
+                cnn.ConnectionString = CnnStr;
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                Qry = "Select * from FSDataVariationStockMovement where Country= '" + Cntry + "' and  ShopID = '" + Shopid + "' and ProductID ='" + prodid + "' and  ModelId = '" + ModelId + "' and ScrapName= '"+ ScrapName + "' and Slot = '"+slot+"' ";
+                SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
+                Sqldbda.Fill(dt);
+                if (dt.Rows.Count > 0)
+                {
+                    cnn.Close();
+                    return true;
+                }
+                else
+                {
+                    cnn.Close();
+                    return false;
+                }
+            }
+            catch
+            {
+                cnn.Close();
+                return false;
+            }
+        }
+
+        public bool IsRecordExistPreScrap(string ModelId, string Cntry, string Shopid, string prodid, string PreScrap)
+        {
+            try
+            {
+                string Qry;
+                DataTable dt = new DataTable();
+                cnn.ConnectionString = CnnStr;
+                if (cnn.State == ConnectionState.Closed) cnn.Open();
+                Qry = "Select * from PreScrapData where Country= '" + Cntry + "' and  ShopID = '" + Shopid + "' and ProductID ='" + prodid + "' and  ModelId = '" + ModelId + "' and PreScrapName= '" + PreScrap + "'";
+                SqlDataAdapter Sqldbda = new SqlDataAdapter(Qry, cnn);
+                Sqldbda.Fill(dt);
+                if (dt.Rows.Count > 0)
+                {
+                    cnn.Close();
+                    return true;
+                }
+                else
+                {
+                    cnn.Close();
+                    return false;
+                }
+            }
+            catch
+            {
+                cnn.Close();
+                return false;
+            }
+        }
+
+
         //   Get Category Name thourgh Promotion ID , CategoryId and Country 
         public string GetCatName(string PromotionID, string CatID, string Cntry)
         {

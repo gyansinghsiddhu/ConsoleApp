@@ -21,7 +21,17 @@ namespace ConsoleApp
             if (args.Length == 0)
             {
                 args = new string[1];
-                args[0] = "fb";
+                args[0] = "th";
+                Scrapping("Thailand");
+                //ScrappingFeedback("Thailand", "12908504220");
+            }
+            if(args.Length == 3)
+            {
+                string contry = "";
+                if (args[1] == "th") contry = "Thailand"; else if (args[1] == "id") contry = "Indonesia"; else if (args[1] == "vi") contry = "Vietnam";
+                else if (args[1] == "my") contry = "Malaysia"; else if (args[1] == "ph") contry = "Philippines"; else if (args[1] == "sg") contry = "Singapore";
+                ScrappingFeedback(contry, args[2].ToString());
+                return;
             }
 
             //if (args.Length == 0)
@@ -60,7 +70,7 @@ namespace ConsoleApp
                     Scrapping("Singapore");
                     break;
                 case "fb":
-                    ScrappingFeedback();
+                    ScrappingFeedback("","");
                     break;
            
             }
@@ -133,10 +143,10 @@ namespace ConsoleApp
         }
 
 
-        static void ScrappingFeedback()
+        static void ScrappingFeedback(string Country, string ItemID)
         {
             var sDAL = new ScrapDAL(_iconfiguration);
-            sDAL.FeedbackScrapping();
+            sDAL.FeedbackScrapping(Country,ItemID);
         }
 
 

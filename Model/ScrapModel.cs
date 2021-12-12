@@ -50,6 +50,9 @@ namespace ConsoleApp.Model
         public int SrNO { get; set; }
         public int Slot { get; set; }
         public int UNIT_SOLD { get; set; }
+        public int AllocatedStock { get; set; }
+        public int AvailableStock { get; set; }
+        public int Var_UNIT_SOLD { get; set; }
         public int FSLatestSold { get; set; }
         public int FSUnitSold_1 { get; set; }
         public int FSUnitSold_2 { get; set; }
